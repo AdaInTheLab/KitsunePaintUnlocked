@@ -81,6 +81,15 @@ dotnet build PaintUnlocked.csproj -c Release
 
 Output: `bin/Release/net48/PaintUnlocked.dll`
 
+## Versioning
+
+PaintUnlocked and the OcbCustomTextures fork ship as a **single release zip** to prevent version mismatches. Both mods must be the same release -- mismatched versions cause silent failures.
+
+- **PaintUnlocked**: semver (e.g. `1.0.0`), drives the shared version
+- **OcbCustomTextures fork**: `{upstream base}-pu{version}` (e.g. `0.8.0-pu1.0.0`)
+
+Both version numbers live in their respective `ModInfo.xml` files and are bumped together on every release.
+
 ## License
 
 MIT -- see [LICENSE](LICENSE).
