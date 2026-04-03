@@ -56,6 +56,7 @@ public class PaintUnlockedMod : IModApi
         harmony.Patch(getPpsLen, postfix: new HarmonyMethod(getPpsLenPostfix));
 
         Log.Out("[PaintUnlocked] Loaded - paint texture limit removed (byte -> ushort, chunk storage 8-bit -> 10-bit).");
+        Log.Warning("[PaintUnlocked] IMPORTANT: This mod uses 10-bit chunk storage. Existing worlds painted with the vanilla 8-bit format will show default textures on previously painted blocks. A fresh world is required for correct operation.");
     }
 }
 
@@ -133,9 +134,7 @@ public static class PaintIndexWidenerPatch
             var idx       = LoadIdx(__instance);
 
             if (idx > 255)
-                Log.Out($"[PaintUnlocked] WritePrefix: idx={idx} pos={blockPos} face={blockFace} channel={channel} -> encoding as overflow");
-            else
-                Log.Out($"[PaintUnlocked] WritePrefix: idx={idx} pos={blockPos} face={blockFace} channel={channel} -> encoding as byte");
+                Log.Out($"[PaintUnlocked] WritePrefix: idx={idx} pos={blockPos} face={blockFace} -> encoding as overflow");
 
             _writeInt.Invoke(_bw, new object[] { blockPos.x });
             _writeInt.Invoke(_bw, new object[] { blockPos.y });
@@ -148,7 +147,6 @@ public static class PaintIndexWidenerPatch
                 byte channelWire = (byte)(OverflowFlag | ((idx >> 8) & 0x7F));
                 _writeByte.Invoke(_bw, new object[] { channelWire });
                 _writeByte.Invoke(_bw, new object[] { (byte)(idx & 0xFF) });
-                Log.Out($"[PaintUnlocked] WritePrefix: channelWire=0x{channelWire:X2} idxByte=0x{(idx & 0xFF):X2}");
             }
             else
             {
@@ -182,13 +180,11 @@ public static class PaintIndexWidenerPatch
             {
                 _fChannel.SetValue(__instance, (byte)0);
                 ushort idx = (ushort)(((channelByte & 0x7F) << 8) | idxByte);
-                Log.Out($"[PaintUnlocked] ReadPrefix: overflow decode channelByte=0x{channelByte:X2} idxByte=0x{idxByte:X2} -> idx={idx}");
                 StoreIdx(__instance, idx);
             }
             else
             {
                 _fChannel.SetValue(__instance, channelByte);
-                Log.Out($"[PaintUnlocked] ReadPrefix: normal decode channelByte={channelByte} idxByte={idxByte}");
                 StoreIdx(__instance, idxByte);
             }
 
