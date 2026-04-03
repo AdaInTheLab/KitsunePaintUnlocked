@@ -1,54 +1,91 @@
 # PaintUnlocked
 
-**Removes the 255 paint texture hard limit in 7 Days to Die.**
+**Breaks the hardcoded 255 paint texture limit in 7 Days to Die, raising it to 1023.**
 
-The vanilla game serializes paint texture indices as a single byte in `NetPackageSetBlockTexture`, silently truncating any index above 255. `BlockTextureData.TextureID` is a `ushort` internally — the engine supports up to 65535 textures. The bottleneck was purely the network packet.
-
-This mod patches `Setup`, `write`, and `read` on `NetPackageSetBlockTexture` to use a magic sentinel byte + ushort for indices above 254, while remaining fully backward compatible with vanilla for indices 0-254.
+Vanilla 7D2D caps paint textures at 255 across four separate engine layers. PaintUnlocked patches all four simultaneously using Harmony, allowing large paint packs like PyroPaints, CK Textures, and KitsunePaints to run together without conflict.
 
 ## Requirements
 
 - 7 Days to Die V2.0+
-- [OCBCustomTextures](https://www.nexusmods.com/7daystodie/mods/2788) (handles the actual texture atlas injection)
+- [OcbCustomTextures](https://github.com/OCB7D2D/OcbCustomTextures) (PaintUnlocked-compatible fork)
 - EAC **disabled** on server and all clients
 
 ## Installation
 
-Drop the `PaintUnlocked` folder into your server's `Mods/` directory.
+1. Drop the `PaintUnlocked` folder (containing `PaintUnlocked.dll` and `ModInfo.xml`) into `Mods/` on **both the server and all connecting clients**.
+2. Install the PaintUnlocked-compatible OcbCustomTextures fork on both server and clients.
+3. A **fresh world is required** for correct 10-bit chunk storage. Existing worlds will display paint index 0 on previously painted blocks (cosmetic only, no crashes).
 
-**Install on BOTH the server and all connecting clients.** Unpatched clients can still connect and use paint slots 0-254, but slots 255+ will not work for them.
+Unpatched clients can still connect and use paint slots 0-254 normally. Slots 255+ will not render correctly for them.
 
-## How it works
+## What it patches
 
-`NetPackageSetBlockTexture` is the vanilla network packet that fires when a player applies paint to a block. It stored the texture index as a `byte` field (`idx`), meaning any value above 255 was silently cast away before hitting the wire.
+### Layer 1: Network packets
 
-This mod intercepts `Setup()` to capture the full index before truncation, then replaces `write()` and `read()` with an extended protocol:
+`NetPackageSetBlockTexture` sends paint indices as a single `byte` (max 255). The packet is exactly 19 bytes and `GetLength()` is hardcoded -- adding bytes causes stream desync and instant disconnection.
 
-- Indices **0-254**: single byte (vanilla format, zero overhead)
-- Indices **255+**: `0xFF` magic sentinel + `ushort` (3 bytes total)
+PaintUnlocked repurposes the `channel` byte field to carry overflow bits. Bit 7 is an overflow flag: when set, the remaining 7 bits of channel plus the idx byte form a 15-bit index. For indices 0-254, the packet is byte-identical to vanilla.
 
-Discovered via reflection on `Assembly-CSharp.dll`. The engine itself was never the limit — just this one packet.
+### Layer 2: Chunk storage (10-bit)
+
+`Chunk.SetBlockFaceTexture`, `Chunk.GetBlockFaceTexture`, and `Chunk.Value64FullToIndex` all use 8-bit masks (`0xFF`) and 8-bit shifts to pack/unpack paint indices into an `Int64` per block. IL transpilers widen these to 10-bit (`0x3FF` mask, 10-bit shifts), supporting up to 1023 indices per face.
+
+A postfix clamp on `Value64FullToIndex` prevents array-out-of-bounds crashes when loading old 8-bit world data into the 10-bit decoder.
+
+### Layer 3: Paint ID allocation
+
+The server loads fewer vanilla paints than the client (~155 vs ~407), so custom paint IDs diverge unless forced to a common floor. PaintUnlocked seeds `GetFreePaintID` at ID 512 on both sides, ensuring identical allocation regardless of vanilla paint count.
+
+### Layer 4: Network buffer sizing
+
+`NetPackagePersistentPlayerState.GetLength()` returns 1000 bytes, which overflows with many custom paints and causes `Unknown NetPackage ID` disconnections. PaintUnlocked expands this to 65536 bytes.
+
+### UI protection
+
+A finalizer on `XUiC_ItemStack.updateBackgroundTexture` catches `NullReferenceException` for paint IDs beyond the texture atlas size, keeping the toolbelt functional.
+
+### Debug command
+
+`pu_debug <paintID>` -- dumps `BlockTextureData` for a specific paint, including texture atlas mappings and GPU slot assignments. Available in the F1 console.
 
 ## Compatibility
 
-- Works standalone
-- Works alongside [KitsuneCommand](https://github.com/AdaInTheLab/KitsuneCommand) (which includes this patch as of v2.3.0)
-- Compatible with KitsunePaint and any OCBCustomTextures-based paint pack
+- Works with any OcbCustomTextures-based paint pack (KitsunePaints, PyroPaints, CK Textures, etc.)
+- Backward compatible: indices 0-254 are wire-identical to vanilla
+- Unpatched clients work for vanilla paint range
+- **Not compatible with vanilla OcbCustomTextures** -- requires the PaintUnlocked-compatible fork that handles dynamic array resizing, 512 ID floor, and atlas size calculations
+
+## Known limitations
+
+- `TextureIdxToTextureFullValue64` (paint menu -> block storage) is not yet patched for above-255 indices. Painting from the radial wheel texture picker works correctly as a workaround.
+- Toolbelt thumbnails may be blank for custom paints above the vanilla atlas size. Cosmetic only.
+- Fresh world required for correct 10-bit chunk storage. Old worlds display paint 0 on previously painted blocks.
 
 ## Building from source
 
-Copy game binaries from your 7D2D install's `7DaysToDie_Data/Managed/` into `7dtd-binaries/`:
+Copy these from your 7D2D install's `7DaysToDie_Data/Managed/` into `7dtd-binaries/`:
+
 - `Assembly-CSharp.dll`
 - `Assembly-CSharp-firstpass.dll`
 - `UnityEngine.dll`
 - `UnityEngine.CoreModule.dll`
 - `0Harmony.dll`
+- `CustomTextures.dll` (from OcbCustomTextures)
+- `LogLibrary.dll`
 
 Then:
+
 ```
 dotnet build PaintUnlocked.csproj -c Release
 ```
 
+Output: `bin/Release/net48/PaintUnlocked.dll`
+
 ## License
 
-MIT
+MIT -- see [LICENSE](LICENSE).
+
+## Credits
+
+- [ocbMaurice](https://github.com/OCB7D2D) for OcbCustomTextures, the foundation this builds on
+- The 7D2D modding community for paint packs that inspired this work
