@@ -17,8 +17,8 @@ using System.Reflection.Emit;
 /// </summary>
 public static class ChunkTexturePatch
 {
-    private const int NewMask = 0x3FF;
-    private const int NewShiftMultiplier = 10;
+    private const int NewMask = 0xFF;   // 8-bit = vanilla (48-bit storage hard limit)
+    private const int NewShiftMultiplier = 8;  // 6 faces × 8 = 48 bits = ChunkBlockChannel max
 
     [HarmonyPatch(typeof(Chunk), "SetBlockFaceTexture")]
     [HarmonyTranspiler]
@@ -56,6 +56,55 @@ public static class ChunkTexturePatch
         {
             __result = 0; // default to paint 0 (vanilla first paint)
         }
+    }
+
+    public static IEnumerable<CodeInstruction> DumpIL_ChunkCtor(IEnumerable<CodeInstruction> instructions)
+    {
+        var codes = new List<CodeInstruction>(instructions);
+        Log.Out($"[PaintUnlocked] === IL DUMP: Chunk.ctor(int,int) ({codes.Count} instructions) ===");
+        for (int i = 0; i < codes.Count; i++)
+        {
+            var c = codes[i];
+            string operandStr = c.operand != null ? $" {c.operand} ({c.operand.GetType().Name})" : "";
+            // Flag lines near ChunkBlockChannel constructor calls
+            string marker = "";
+            if (c.opcode == OpCodes.Newobj && c.operand?.ToString()?.Contains("ChunkBlockChannel") == true)
+                marker = " <<<< CBC CONSTRUCTOR";
+            if (c.opcode == OpCodes.Ldc_I4_6) marker = " <<<< POSSIBLE bytesPerVal=6";
+            if (c.opcode == OpCodes.Ldc_I4_S && c.operand is sbyte sb && sb == 6) marker = " <<<< POSSIBLE bytesPerVal=6";
+            Log.Out($"[PaintUnlocked]   IL[{i:D3}] {c.opcode}{operandStr}{marker}");
+        }
+        Log.Out($"[PaintUnlocked] === END IL DUMP: Chunk.ctor ===");
+        return codes;
+    }
+
+    /// <summary>Read-only IL dump transpilers for ChunkBlockChannel methods</summary>
+    public static IEnumerable<CodeInstruction> DumpIL_Get(IEnumerable<CodeInstruction> instructions)
+    {
+        var codes = new List<CodeInstruction>(instructions);
+        Log.Out($"[PaintUnlocked] === IL DUMP: ChunkBlockChannel.Get ({codes.Count} instructions) ===");
+        for (int i = 0; i < codes.Count; i++)
+        {
+            var c = codes[i];
+            string operandStr = c.operand != null ? $" {c.operand} ({c.operand.GetType().Name})" : "";
+            Log.Out($"[PaintUnlocked]   IL[{i:D3}] {c.opcode}{operandStr}");
+        }
+        Log.Out($"[PaintUnlocked] === END IL DUMP: ChunkBlockChannel.Get ===");
+        return codes; // no modifications
+    }
+
+    public static IEnumerable<CodeInstruction> DumpIL_Set(IEnumerable<CodeInstruction> instructions)
+    {
+        var codes = new List<CodeInstruction>(instructions);
+        Log.Out($"[PaintUnlocked] === IL DUMP: ChunkBlockChannel.Set ({codes.Count} instructions) ===");
+        for (int i = 0; i < codes.Count; i++)
+        {
+            var c = codes[i];
+            string operandStr = c.operand != null ? $" {c.operand} ({c.operand.GetType().Name})" : "";
+            Log.Out($"[PaintUnlocked]   IL[{i:D3}] {c.opcode}{operandStr}");
+        }
+        Log.Out($"[PaintUnlocked] === END IL DUMP: ChunkBlockChannel.Set ===");
+        return codes; // no modifications
     }
 
     private static IEnumerable<CodeInstruction> PatchMaskAndShift(

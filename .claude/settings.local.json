@@ -26,7 +26,12 @@
       "Bash(cp \"C:\\\\Users\\\\darab\\\\IdeaProjects\\\\KitsunePaintUnlocked\\\\bin\\\\Release\\\\net48\\\\PaintUnlocked.dll\" \"F:\\\\7D2D\\\\Custom\\\\KitsuneCommand\\\\ModConfig\\\\Modlets\\\\0_PaintUnlocked\\\\PaintUnlocked.dll\")",
       "Bash(cp \"$PU\" \"F:\\\\72D2D-Server\\\\Mods\\\\0_PaintUnlocked\\\\PaintUnlocked.dll\")",
       "Bash(cp \"$PU\" \"F:\\\\7D2D\\\\Custom\\\\KitsuneCommand\\\\Mods\\\\0_PaintUnlocked\\\\PaintUnlocked.dll\")",
-      "Bash(cp \"$PU\" \"F:\\\\7D2D\\\\Custom\\\\KitsuneCommand\\\\ModConfig\\\\Modlets\\\\0_PaintUnlocked\\\\PaintUnlocked.dll\")"
+      "Bash(cp \"$PU\" \"F:\\\\7D2D\\\\Custom\\\\KitsuneCommand\\\\ModConfig\\\\Modlets\\\\0_PaintUnlocked\\\\PaintUnlocked.dll\")",
+      "Bash(find C:/Users/darab/IdeaProjects/KitsunePaintUnlocked -type f \\\\\\(-name *.cs -o -name *.cpp -o -name *.h -o -name *.txt -o -name *.md \\\\\\))",
+      "Bash(grep -r \"Int64\\\\|chnTextures\\\\|48.*bit\\\\|6.*face\" C:/Users/darab/IdeaProjects/KitsunePaintUnlocked --include=*.cs --include=*.md)",
+      "Bash(grep -r \"BlockFace\\\\|EBlockFace\\\\|faces\\\\|channel\" C:/Users/darab/IdeaProjects/KitsunePaintUnlocked --include=*.cs --include=*.md)",
+      "Bash(find C:/Users/darab/WebstormProjects/OcbCustomTextures -type f \\\\\\(-name *.cs -o -name *.md -o -name *.txt \\\\\\))",
+      "Bash(grep -r \"BlockFace\\\\|chnTextures\\\\|texture.*channel\\\\|6.*face\" C:/Users/darab/WebstormProjects/OcbCustomTextures --include=*.cs)"
     ]
   }
 }

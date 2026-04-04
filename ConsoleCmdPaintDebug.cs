@@ -13,9 +13,36 @@ public class ConsoleCmdPaintDebug : ConsoleCmdAbstract
 
     public override void Execute(List<string> _params, CommandSenderInfo _senderInfo)
     {
+        if (_params.Count > 0 && _params[0] == "channels")
+        {
+            // Dump chnTextures array info from a nearby chunk
+            var world = GameManager.Instance?.World;
+            if (world == null) { Log.Out("[PaintDebug] No world"); return; }
+            var player = world.GetPrimaryPlayer();
+            if (player == null) { Log.Out("[PaintDebug] No player"); return; }
+            var pos = new Vector3i(player.position);
+            var chunk = (Chunk)world.GetChunkFromWorldPos(pos);
+            if (chunk == null) { Log.Out("[PaintDebug] No chunk at player pos"); return; }
+
+            var field = typeof(Chunk).GetField("chnTextures",
+                System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (field == null) { Log.Out("[PaintDebug] chnTextures field not found"); return; }
+            var arr = field.GetValue(chunk) as System.Array;
+            if (arr == null) { Log.Out("[PaintDebug] chnTextures is null"); return; }
+
+            Log.Out($"[PaintDebug] chnTextures.Length = {arr.Length}");
+            Log.Out($"[PaintDebug] chnTextures element type = {arr.GetType().GetElementType()?.Name}");
+            for (int c = 0; c < arr.Length; c++)
+            {
+                var ch = arr.GetValue(c);
+                Log.Out($"[PaintDebug] chnTextures[{c}] = {(ch == null ? "NULL" : ch.GetType().Name)}");
+            }
+            return;
+        }
+
         if (_params.Count == 0)
         {
-            Log.Out("[PaintDebug] Usage: pu_debug <paintID>");
+            Log.Out("[PaintDebug] Usage: pu_debug <paintID> | pu_debug channels");
             return;
         }
 
