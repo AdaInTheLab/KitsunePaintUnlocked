@@ -32,6 +32,15 @@ public class PaintUnlockedMod : IModApi
         }
         else Log.Warning("[PaintUnlocked] Value64FullToIndex not found!");
 
+        // === Prefab/bulk texture re-encoding (8-bit → 10-bit) ===
+        var setTexFull = AccessTools.Method(typeof(Chunk), "SetTextureFull");
+        if (setTexFull != null)
+        {
+            harmony.Patch(setTexFull, prefix: new HarmonyMethod(AccessTools.Method(typeof(TextureFullRepackPatch), "Prefix")));
+            Log.Out("[PaintUnlocked] SetTextureFull: prefix added for 8-bit → 10-bit re-encoding");
+        }
+        else Log.Warning("[PaintUnlocked] SetTextureFull not found!");
+
         // === Layer 2: Paint ID allocation floor ===
         var getFreePaintID = AccessTools.Method(typeof(OpaqueTextures), "GetFreePaintID");
         var getFreePaintIDPrefix = AccessTools.Method(typeof(OcbPaintLimitPatch), "GetFreePaintIDPrefix");

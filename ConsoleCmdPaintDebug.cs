@@ -40,6 +40,28 @@ public class ConsoleCmdPaintDebug : ConsoleCmdAbstract
             return;
         }
 
+        if (_params.Count > 0 && _params[0] == "dumppoi")
+        {
+            // Dump IL of methods that write raw Int64 texture data (prefab loading path)
+            var methods = new[] { "SetTextureFull", "GetSetTextureFullArray", "GetTextureFullArray" };
+            foreach (var name in methods)
+            {
+                var method = HarmonyLib.AccessTools.Method(typeof(Chunk), name);
+                if (method == null) { Log.Out($"[PaintDebug] {name} not found"); continue; }
+                var instructions = HarmonyLib.PatchProcessor.GetOriginalInstructions(method);
+                var codes = new List<HarmonyLib.CodeInstruction>(instructions);
+                Log.Out($"[PaintDebug] === IL DUMP: Chunk.{name} ({codes.Count} instructions) ===");
+                for (int i = 0; i < codes.Count; i++)
+                {
+                    var c = codes[i];
+                    string operandStr = c.operand != null ? $" {c.operand} ({c.operand.GetType().Name})" : "";
+                    Log.Out($"[PaintDebug]   IL[{i:D3}] {c.opcode}{operandStr}");
+                }
+                Log.Out($"[PaintDebug] === END IL DUMP: {name} ===");
+            }
+            return;
+        }
+
         if (_params.Count > 0 && _params[0] == "dumpsetmat")
         {
             // Dump IL of SetMaterials to find how Meta is set
