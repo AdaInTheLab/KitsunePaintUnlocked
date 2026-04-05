@@ -1,5 +1,7 @@
 # PaintUnlocked
 
+![PaintUnlocked - 302 paints running simultaneously](kitsune-paint-unlocked.png)
+
 **Breaks the hardcoded 255 paint texture limit in 7 Days to Die, raising it to 1023.**
 
 Vanilla 7D2D caps paint textures at 255 across five separate engine layers. PaintUnlocked patches all five simultaneously using Harmony, allowing large paint packs like PyroPaints, CK Textures, and KitsunePaints to run together without conflict.
